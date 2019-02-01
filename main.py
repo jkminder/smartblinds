@@ -12,9 +12,11 @@ from pyhap.accessory import Accessory, Bridge
 from pyhap.accessory_driver import AccessoryDriver
 import pyhap.loader as loader
 from pyhap import camera
-from pyhap.const import CATEGORY_SENSOR, CATEGORY_SWITCH, CATEGORY_FAN
+import time
+from pyhap.const import CATEGORY_SENSOR, CATEGORY_SWITCH, CATEGORY_FAN, CATEGORY_WINDOW_COVERING
 
-logging.basicConfig(level=logging.INFO, format="[%(module)s] %(message)s")
+logging.basicConfig(level=logging.DEBUG, format="[%(module)s] %(message)s")
+
 
 class Switch(Accessory):
     category = CATEGORY_SWITCH
@@ -79,16 +81,48 @@ def get_bridge(driver):
     bridge = Bridge(driver, 'Bridge')
     temp_sensor = TemperatureSensor(driver, 'TempSensor')
     fan = FakeFan(driver, 'Fan')
+    blind = TestBlind(driver, 'SmartBlindBoi')
+    bridge.add_accessory(blind)
     bridge.add_accessory(temp_sensor)
     bridge.add_accessory(fan)
 
     return bridge
 
+class TestBlind(Accessory):
+    """Testversion of SmartBlinds"""
+    category = CATEGORY_WINDOW_COVERING
 
-def get_accessory(driver):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Add the fan service. Also add optional characteristics to it.
+        serv_blind = self.add_preload_service("WindowCovering")
+
+        self.state = serv_blind.configure_char("PositionState")
+        self.curr_pos = serv_blind.configure_char("CurrentPosition")
+        self.target_pos = serv_blind.configure_char("TargetPosition", setter_callback=self.set_target_pos)
+
+
+        self.state.set_value(2)
+        self.curr_pos.set_value(50)
+        self.target_pos.set_value(49)
+
+    def set_target_pos(self, value):
+        print("Setting FensterladenBOIIII Position: ", value)
+        time.sleep(3)
+        self.curr_pos.set_value(value)
+
+
+
+
+def get_accessory_temp(driver):
     """Call this method to get a standalone Accessory."""
     return TemperatureSensor(driver, 'MyTempSensofr')
 
+
+def get_accessory_blind(driver):
+    """Call this method to get a standalone Accessory."""
+    return TemperatureSensor(driver, 'MyTempSensofr')
 
 # Start the accessory on port 51826
 driver = AccessoryDriver(port=51826, persist_file="accessory.state")
